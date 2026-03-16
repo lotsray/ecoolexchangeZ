@@ -3,35 +3,32 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>管理端｜五常國小點數系統</title>
+  <title>管理端</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <main class="container">
-    <header class="page-header">
-      <h1>管理端</h1>
-      <p class="subtitle">提供圖書館管理人員查詢學生並扣除點數。</p>
-    </header>
+    <h1>管理端</h1>
 
-    <section id="loginCard" class="card narrow-card">
-      <label for="adminCode">管理碼</label>
-      <input id="adminCode" type="password" placeholder="請輸入管理碼" autocomplete="current-password" />
+    <div id="loginCard" class="card">
+      <label for="adminCode">請輸入管理碼</label>
+      <input id="adminCode" type="password" placeholder="請輸入管理碼" />
       <button id="verifyBtn">進入管理端</button>
-      <p id="loginMessage" class="message" aria-live="polite"></p>
-    </section>
+      <p id="loginMessage" class="message"></p>
+    </div>
 
-    <section id="adminPanel" class="hidden">
+    <div id="adminPanel" class="hidden">
       <div class="card">
-        <h2>搜尋學生</h2>
+        <h2>學生查詢</h2>
         <label for="keyword">學號或姓名</label>
-        <input id="keyword" type="text" placeholder="例如：114999" autocomplete="off" />
-        <button id="searchBtn">搜尋</button>
-        <p id="searchMessage" class="message" aria-live="polite"></p>
+        <input id="keyword" type="text" placeholder="請輸入學生學號或姓名" />
+        <button id="searchBtn">搜尋學生</button>
+        <p id="searchMessage" class="message"></p>
       </div>
 
-      <div id="resultsCard" class="card hidden">
+      <div id="searchResultsCard" class="card hidden">
         <h2>搜尋結果</h2>
-        <div id="resultsList" class="results-list"></div>
+        <div id="searchResults"></div>
       </div>
 
       <div id="studentCard" class="card hidden">
@@ -41,21 +38,27 @@
           <div>座號</div><div id="rSeat"></div>
           <div>學號</div><div id="rStudentId"></div>
           <div>姓名</div><div id="rName"></div>
-          <div>剩餘點數</div><div id="rPoints" class="points-value"></div>
+          <div>剩餘點數</div><div id="rPoints"></div>
         </div>
 
         <hr />
 
-        <label for="deductPoints">扣除點數</label>
-        <input id="deductPoints" type="number" min="1" step="1" placeholder="例如：10" />
+        <label for="actionMode">操作類型</label>
+        <select id="actionMode">
+          <option value="deduct">扣點</option>
+          <option value="add">加點</option>
+        </select>
 
-        <label for="note">兌換備註</label>
-        <input id="note" type="text" placeholder="例如：鉛筆 1 支" maxlength="100" />
+        <label for="adjustPoints">點數</label>
+        <input id="adjustPoints" type="number" min="1" placeholder="例如：10" />
 
-        <button id="deductBtn">確認扣點</button>
-        <p id="deductMessage" class="message" aria-live="polite"></p>
+        <label for="note">備註</label>
+        <input id="note" type="text" placeholder="例如：兌換鉛筆 / 表現優良加點" />
+
+        <button id="adjustBtn">確認送出</button>
+        <p id="adjustMessage" class="message"></p>
       </div>
-    </section>
+    </div>
 
     <div class="back-area">
       <a href="index.html">回首頁</a>
@@ -63,7 +66,7 @@
   </main>
 
   <script>
-    const GAS_URL = 'https://script.google.com/macros/s/AKfycbyveRss0eLvzcYsRHfc2-w5cDFrwNJGsX0OBWfkMkCRbwbY0PrkickvHMK-sg_uMQFo/exec';
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbwBYAQEX7Juh2EUdAEYlwm1Euo8JAIsGS9NyGR8XCUmuqDEN2u3dBqnABfsj2xoSXEU/exec';
 
     let verifiedAdminCode = '';
     let currentStudent = null;
@@ -77,218 +80,232 @@
     const keywordInput = document.getElementById('keyword');
     const searchBtn = document.getElementById('searchBtn');
     const searchMessage = document.getElementById('searchMessage');
-    const resultsCard = document.getElementById('resultsCard');
-    const resultsList = document.getElementById('resultsList');
+
+    const searchResultsCard = document.getElementById('searchResultsCard');
+    const searchResults = document.getElementById('searchResults');
 
     const studentCard = document.getElementById('studentCard');
-    const deductPointsInput = document.getElementById('deductPoints');
+    const actionModeSelect = document.getElementById('actionMode');
+    const adjustPointsInput = document.getElementById('adjustPoints');
     const noteInput = document.getElementById('note');
-    const deductBtn = document.getElementById('deductBtn');
-    const deductMessage = document.getElementById('deductMessage');
+    const adjustBtn = document.getElementById('adjustBtn');
+    const adjustMessage = document.getElementById('adjustMessage');
 
-    function setMessage(el, text, isError = false) {
-      el.textContent = text;
-      el.className = isError ? 'message error' : 'message';
+    function setText(id, value) {
+      document.getElementById(id).textContent = value ?? '';
     }
 
-    function setStudentView(data) {
-      document.getElementById('rClass').textContent = data.className ?? '';
-      document.getElementById('rSeat').textContent = data.seatNo ?? '';
-      document.getElementById('rStudentId').textContent = data.studentId ?? '';
-      document.getElementById('rName').textContent = data.name ?? '';
-      document.getElementById('rPoints').textContent = data.points ?? 0;
+    function setLoginMessage(text, isError = false) {
+      loginMessage.textContent = text;
+      loginMessage.className = isError ? 'message error' : 'message';
+    }
+
+    function setSearchMessage(text, isError = false) {
+      searchMessage.textContent = text;
+      searchMessage.className = isError ? 'message error' : 'message';
+    }
+
+    function setAdjustMessage(text, isError = false) {
+      adjustMessage.textContent = text;
+      adjustMessage.className = isError ? 'message error' : 'message';
+    }
+
+    function showStudent(data) {
+      setText('rClass', data.className);
+      setText('rSeat', data.seatNo);
+      setText('rStudentId', data.studentId);
+      setText('rName', data.name);
+      setText('rPoints', data.points);
       studentCard.classList.remove('hidden');
       currentStudent = data;
-    }
-
-    function clearStudentView() {
-      currentStudent = null;
-      studentCard.classList.add('hidden');
-      deductPointsInput.value = '';
+      setAdjustMessage('');
+      adjustPointsInput.value = '';
       noteInput.value = '';
-      setMessage(deductMessage, '');
     }
 
-    async function postJson(payload) {
-      const res = await fetch(GAS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(payload)
+    function renderSearchResults(list) {
+      searchResults.innerHTML = '';
+
+      if (!list || list.length === 0) {
+        searchResults.innerHTML = '<p class="message error">查無符合資料</p>';
+        searchResultsCard.classList.remove('hidden');
+        return;
+      }
+
+      list.forEach(student => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'result-item-button';
+        btn.innerHTML = `
+          <div class="result-item-main">
+            <strong>${student.name}</strong>
+            <span>${student.className}／座號 ${student.seatNo}</span>
+          </div>
+          <div class="result-item-side">
+            學號：${student.studentId}｜剩餘點數：${student.points}
+          </div>
+        `;
+        btn.addEventListener('click', () => {
+          showStudent(student);
+        });
+        searchResults.appendChild(btn);
       });
-      return res.json();
+
+      searchResultsCard.classList.remove('hidden');
     }
 
     async function verifyAdminCode() {
       const adminCode = adminCodeInput.value.trim();
       if (!adminCode) {
-        setMessage(loginMessage, '請輸入管理碼。', true);
+        setLoginMessage('請輸入管理碼', true);
         return;
       }
 
-      setMessage(loginMessage, '驗證中...');
+      setLoginMessage('驗證中...');
 
       try {
-        const data = await postJson({
-          action: 'verifyAdminCode',
-          adminCode
+        const res = await fetch(GAS_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'verifyAdminCode',
+            adminCode
+          })
         });
 
+        const data = await res.json();
+
         if (!data.success) {
-          setMessage(loginMessage, data.message || '驗證失敗。', true);
+          setLoginMessage(data.message || '驗證失敗', true);
           return;
         }
 
         verifiedAdminCode = adminCode;
-        sessionStorage.setItem('libraryAdminCode', adminCode);
-        setMessage(loginMessage, '驗證成功。');
+        setLoginMessage('驗證成功');
         loginCard.classList.add('hidden');
         adminPanel.classList.remove('hidden');
       } catch (err) {
-        setMessage(loginMessage, '系統連線失敗，請稍後再試。', true);
+        setLoginMessage('系統連線失敗，請稍後再試', true);
       }
     }
 
-    function renderSearchResults(items) {
-      resultsList.innerHTML = '';
-
-      if (!items.length) {
-        resultsCard.classList.remove('hidden');
-        resultsList.innerHTML = '<p class="empty-tip">查無符合資料。</p>';
-        return;
-      }
-
-      items.forEach((item) => {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'result-item';
-        button.innerHTML = `
-          <strong>${item.name}</strong>
-          <span>${item.className} 班 ${item.seatNo} 號｜學號 ${item.studentId}</span>
-          <span>剩餘點數：${item.points}</span>
-        `;
-        button.addEventListener('click', () => {
-          setStudentView(item);
-          window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-        });
-        resultsList.appendChild(button);
-      });
-
-      resultsCard.classList.remove('hidden');
-    }
-
-    async function searchStudents() {
+    async function searchStudent() {
       const keyword = keywordInput.value.trim();
       if (!keyword) {
-        setMessage(searchMessage, '請輸入學號或姓名。', true);
-        resultsCard.classList.add('hidden');
-        clearStudentView();
+        setSearchMessage('請輸入學號或姓名', true);
         return;
       }
 
-      setMessage(searchMessage, '搜尋中...');
-      resultsCard.classList.add('hidden');
-      clearStudentView();
+      setSearchMessage('查詢中...');
+      studentCard.classList.add('hidden');
+      searchResultsCard.classList.add('hidden');
 
       try {
-        const data = await postJson({
-          action: 'searchStudents',
-          adminCode: verifiedAdminCode,
-          keyword
+        const res = await fetch(GAS_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'searchStudents',
+            adminCode: verifiedAdminCode,
+            keyword
+          })
         });
 
+        const data = await res.json();
+
         if (!data.success) {
-          setMessage(searchMessage, data.message || '搜尋失敗。', true);
+          setSearchMessage(data.message || '查詢失敗', true);
           return;
         }
 
-        setMessage(searchMessage, `搜尋完成，共 ${data.data.length} 筆。`);
+        setSearchMessage(`查詢成功，共 ${data.data.length} 筆`);
         renderSearchResults(data.data);
       } catch (err) {
-        setMessage(searchMessage, '系統連線失敗，請稍後再試。', true);
+        setSearchMessage('系統連線失敗，請稍後再試', true);
       }
     }
 
-    async function deductPoints() {
+    async function adjustPoints() {
       if (!currentStudent) {
-        setMessage(deductMessage, '請先選取學生。', true);
+        setAdjustMessage('請先選擇學生', true);
         return;
       }
 
-      const points = Number(deductPointsInput.value);
+      const mode = actionModeSelect.value;
+      const points = Number(adjustPointsInput.value);
       const note = noteInput.value.trim();
-      const currentPoints = Number(currentStudent.points) || 0;
 
       if (!Number.isFinite(points) || points <= 0) {
-        setMessage(deductMessage, '請輸入正確的扣除點數。', true);
+        setAdjustMessage('請輸入正確的點數', true);
         return;
       }
 
-      if (points > currentPoints) {
-        setMessage(deductMessage, `點數不足，目前只有 ${currentPoints} 點。`, true);
+      const currentPoints = Number(currentStudent.points) || 0;
+      const newPoints = mode === 'deduct'
+        ? currentPoints - points
+        : currentPoints + points;
+
+      if (mode === 'deduct' && newPoints < 0) {
+        setAdjustMessage(`點數不足，目前只有 ${currentPoints} 點`, true);
         return;
       }
+
+      const actionText = mode === 'deduct' ? '扣點' : '加點';
 
       const ok = confirm(
-        `確認扣點？\n\n` +
+        `確認${actionText}？\n\n` +
         `學生：${currentStudent.name}\n` +
-        `學號：${currentStudent.studentId}\n` +
         `目前點數：${currentPoints}\n` +
-        `扣除點數：${points}\n` +
-        `扣除後剩餘：${currentPoints - points}\n` +
-        `備註：${note || '無'}`
+        `${actionText}點數：${points}\n` +
+        `調整後剩餘：${newPoints}`
       );
 
       if (!ok) return;
 
-      setMessage(deductMessage, '處理中...');
+      setAdjustMessage('處理中...');
 
       try {
-        const data = await postJson({
-          action: 'deductPoints',
-          adminCode: verifiedAdminCode,
-          studentId: currentStudent.studentId,
-          points,
-          note
+        const res = await fetch(GAS_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'adjustPoints',
+            adminCode: verifiedAdminCode,
+            studentId: currentStudent.studentId,
+            mode,
+            points,
+            note
+          })
         });
 
+        const data = await res.json();
+
         if (!data.success) {
-          setMessage(deductMessage, data.message || '扣點失敗。', true);
+          setAdjustMessage(data.message || `${actionText}失敗`, true);
           return;
         }
 
-        currentStudent = {
+        setAdjustMessage(`${actionText}成功，剩餘點數：${data.data.newPoints}`);
+        showStudent({
           ...currentStudent,
           points: data.data.newPoints
-        };
-        setStudentView(currentStudent);
-        deductPointsInput.value = '';
-        noteInput.value = '';
-        setMessage(deductMessage, `扣點成功，剩餘點數：${data.data.newPoints}`);
+        });
       } catch (err) {
-        setMessage(deductMessage, '系統連線失敗，請稍後再試。', true);
+        setAdjustMessage('系統連線失敗，請稍後再試', true);
       }
     }
 
-    function tryAutoLogin() {
-      const savedCode = sessionStorage.getItem('libraryAdminCode');
-      if (!savedCode) return;
-      adminCodeInput.value = savedCode;
-      verifyAdminCode();
-    }
-
     verifyBtn.addEventListener('click', verifyAdminCode);
-    searchBtn.addEventListener('click', searchStudents);
-    deductBtn.addEventListener('click', deductPoints);
+    searchBtn.addEventListener('click', searchStudent);
+    adjustBtn.addEventListener('click', adjustPoints);
 
     adminCodeInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') verifyAdminCode();
     });
 
     keywordInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') searchStudents();
+      if (e.key === 'Enter') searchStudent();
     });
-
-    tryAutoLogin();
   </script>
 </body>
 </html>
