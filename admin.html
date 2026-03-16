@@ -110,14 +110,22 @@
       adjustMessage.className = isError ? 'message error' : 'message';
     }
 
+    function clearStudentPanel() {
+      currentStudent = null;
+      studentCard.classList.add('hidden');
+      adjustPointsInput.value = '';
+      noteInput.value = '';
+      setAdjustMessage('');
+    }
+
     function showStudent(data) {
       setText('rClass', data.className);
       setText('rSeat', data.seatNo);
       setText('rStudentId', data.studentId);
       setText('rName', data.name);
       setText('rPoints', data.points);
-      studentCard.classList.remove('hidden');
       currentStudent = data;
+      studentCard.classList.remove('hidden');
       setAdjustMessage('');
       adjustPointsInput.value = '';
       noteInput.value = '';
@@ -145,9 +153,7 @@
             學號：${student.studentId}｜剩餘點數：${student.points}
           </div>
         `;
-        btn.addEventListener('click', () => {
-          showStudent(student);
-        });
+        btn.addEventListener('click', () => showStudent(student));
         searchResults.appendChild(btn);
       });
 
@@ -156,6 +162,7 @@
 
     async function verifyAdminCode() {
       const adminCode = adminCodeInput.value.trim();
+
       if (!adminCode) {
         setLoginMessage('請輸入管理碼', true);
         return;
@@ -166,7 +173,7 @@
       try {
         const res = await fetch(GAS_URL, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({
             action: 'verifyAdminCode',
             adminCode
@@ -185,25 +192,27 @@
         loginCard.classList.add('hidden');
         adminPanel.classList.remove('hidden');
       } catch (err) {
+        console.error(err);
         setLoginMessage('系統連線失敗，請稍後再試', true);
       }
     }
 
     async function searchStudent() {
       const keyword = keywordInput.value.trim();
+
       if (!keyword) {
         setSearchMessage('請輸入學號或姓名', true);
         return;
       }
 
       setSearchMessage('查詢中...');
-      studentCard.classList.add('hidden');
       searchResultsCard.classList.add('hidden');
+      clearStudentPanel();
 
       try {
         const res = await fetch(GAS_URL, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({
             action: 'searchStudents',
             adminCode: verifiedAdminCode,
@@ -221,6 +230,7 @@
         setSearchMessage(`查詢成功，共 ${data.data.length} 筆`);
         renderSearchResults(data.data);
       } catch (err) {
+        console.error(err);
         setSearchMessage('系統連線失敗，請稍後再試', true);
       }
     }
@@ -267,7 +277,7 @@
       try {
         const res = await fetch(GAS_URL, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({
             action: 'adjustPoints',
             adminCode: verifiedAdminCode,
@@ -285,12 +295,15 @@
           return;
         }
 
-        setAdjustMessage(`${actionText}成功，剩餘點數：${data.data.newPoints}`);
-        showStudent({
+        const updatedStudent = {
           ...currentStudent,
           points: data.data.newPoints
-        });
+        };
+
+        showStudent(updatedStudent);
+        setAdjustMessage(`${actionText}成功，剩餘點數：${data.data.newPoints}`);
       } catch (err) {
+        console.error(err);
         setAdjustMessage('系統連線失敗，請稍後再試', true);
       }
     }
