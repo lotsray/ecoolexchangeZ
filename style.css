@@ -22,6 +22,35 @@ body {
   padding: 32px 24px 64px;
 }
 
+/* ===== 首頁專用 ===== */
+.home-container {
+  max-width: 760px;
+  margin: 0 auto;
+  padding-top: 56px;
+}
+
+.home-title {
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+.home-subtitle {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.home-card {
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.admin-link {
+  display: inline-block;
+  margin-top: 20px;
+}
+
+/* ===== 通用文字 ===== */
 h1 {
   margin: 0 0 14px;
   font-size: 3rem;
@@ -45,6 +74,7 @@ h2 {
   color: #475569;
 }
 
+/* ===== 卡片 ===== */
 .card {
   background: #ffffff;
   border: 1px solid #d7e0ea;
@@ -55,9 +85,10 @@ h2 {
 }
 
 .menu-card {
-  max-width: 560px;
+  text-align: center;
 }
 
+/* ===== 表單 ===== */
 label {
   display: block;
   margin-bottom: 10px;
@@ -87,6 +118,7 @@ select:focus {
   box-shadow: 0 0 0 4px rgba(47, 103, 222, 0.12);
 }
 
+/* ===== 按鈕 ===== */
 button,
 .big-button {
   display: inline-block;
@@ -126,6 +158,7 @@ button:active,
   text-decoration: underline;
 }
 
+/* ===== 訊息 ===== */
 .message {
   min-height: 1.6em;
   margin-top: 8px;
@@ -142,6 +175,7 @@ button:active,
   display: none;
 }
 
+/* ===== 查詢結果區 ===== */
 .result-grid {
   display: grid;
   grid-template-columns: 140px 1fr;
@@ -154,6 +188,7 @@ button:active,
   color: #334155;
 }
 
+/* ===== 返回連結 ===== */
 .back-area {
   text-align: center;
   margin-top: 28px;
@@ -176,6 +211,7 @@ hr {
   margin: 24px 0;
 }
 
+/* ===== 搜尋結果列表 ===== */
 #searchResults {
   display: flex;
   flex-direction: column;
@@ -234,9 +270,14 @@ hr {
   margin-top: 4px;
 }
 
+/* ===== 平板 ===== */
 @media (max-width: 900px) {
   .container {
     padding: 24px 18px 44px;
+  }
+
+  .home-container {
+    padding-top: 36px;
   }
 
   h1 {
@@ -285,9 +326,14 @@ hr {
   }
 }
 
+/* ===== 手機 ===== */
 @media (max-width: 520px) {
   .container {
     padding: 20px 14px 36px;
+  }
+
+  .home-container {
+    padding-top: 28px;
   }
 
   h1 {
@@ -300,6 +346,7 @@ hr {
 
   .card {
     padding: 18px 16px;
+    border-radius: 16px;
   }
 
   .result-grid {
@@ -317,5 +364,10 @@ hr {
 
   .result-item-side {
     font-size: 0.94rem;
+  }
+
+  .admin-link,
+  .small-link {
+    margin-top: 16px;
   }
 }
