@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>管理端｜五常國小點數系統</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="container">
+    <header class="page-header">
+      <h1>管理端</h1>
+      <p class="subtitle">提供圖書館管理人員查詢學生並扣除點數。</p>
+    </header>
+
+    <section id="loginCard" class="card narrow-card">
+      <label for="adminCode">管理碼</label>
+      <input id="adminCode" type="password" placeholder="請輸入管理碼" autocomplete="current-password" />
+      <button id="verifyBtn">進入管理端</button>
+      <p id="loginMessage" class="message" aria-live="polite"></p>
+    </section>
+
+    <section id="adminPanel" class="hidden">
+      <div class="card">
+        <h2>搜尋學生</h2>
+        <label for="keyword">學號或姓名</label>
+        <input id="keyword" type="text" placeholder="例如：114027 或 凌凱" autocomplete="off" />
+        <button id="searchBtn">搜尋</button>
+        <p id="searchMessage" class="message" aria-live="polite"></p>
+      </div>
+
+      <div id="resultsCard" class="card hidden">
+        <h2>搜尋結果</h2>
+        <div id="resultsList" class="results-list"></div>
+      </div>
+
+      <div id="studentCard" class="card hidden">
+        <h2>學生資料</h2>
+        <div class="result-grid">
+          <div>班級</div><div id="rClass"></div>
+          <div>座號</div><div id="rSeat"></div>
+          <div>學號</div><div id="rStudentId"></div>
+          <div>姓名</div><div id="rName"></div>
+          <div>剩餘點數</div><div id="rPoints" class="points-value"></div>
+        </div>
+
+        <hr />
+
+        <label for="deductPoints">扣除點數</label>
+        <input id="deductPoints" type="number" min="1" step="1" placeholder="例如：10" />
+
+        <label for="note">兌換備註</label>
+        <input id="note" type="text" placeholder="例如：鉛筆 1 支" maxlength="100" />
+
+        <button id="deductBtn">確認扣點</button>
+        <p id="deductMessage" class="message" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <div class="back-area">
+      <a href="index.html">回首頁</a>
+    </div>
+  </main>
+
+  <script>
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbworGSEpAIFNwuszYAOrAcgcCjCUU10jYQtZTL7mQdfcVmiMg3gchdoGnB2WWzPLilY/exec';
+
+    let verifiedAdminCode = '';
+    let currentStudent = null;
+
+    const loginCard = document.getElementById('loginCard');
+    const adminPanel = document.getElementById('adminPanel');
+    const adminCodeInput = document.getElementById('adminCode');
+    const verifyBtn = document.getElementById('verifyBtn');
+    const loginMessage = document.getElementById('loginMessage');
+
+    const keywordInput = document.getElementById('keyword');
+    const searchBtn = document.getElementById('searchBtn');
+    const searchMessage = document.getElementById('searchMessage');
+    const resultsCard = document.getElementById('resultsCard');
+    const resultsList = document.getElementById('resultsList');
+
+    const studentCard = document.getElementById('studentCard');
+    const deductPointsInput = document.getElementById('deductPoints');
+    const noteInput = document.getElementById('note');
+    const deductBtn = document.getElementById('deductBtn');
+    const deductMessage = document.getElementById('deductMessage');
+
+    function setMessage(el, text, isError = false) {
+      el.textContent = text;
+      el.className = isError ? 'message error' : 'message';
+    }
+
+    function setStudentView(data) {
+      document.getElementById('rClass').textContent = data.className ?? '';
+      document.getElementById('rSeat').textContent = data.seatNo ?? '';
+      document.getElementById('rStudentId').textContent = data.studentId ?? '';
+      document.getElementById('rName').textContent = data.name ?? '';
+      document.getElementById('rPoints').textContent = data.points ?? 0;
+      studentCard.classList.remove('hidden');
+      currentStudent = data;
+    }
+
+    function clearStudentView() {
+      currentStudent = null;
+      studentCard.classList.add('hidden');
+      deductPointsInput.value = '';
+      noteInput.value = '';
+      setMessage(deductMessage, '');
+    }
+
+    async function postJson(payload) {
+      const res = await fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      });
+      return res.json();
+    }
+
+    async function verifyAdminCode() {
+      const adminCode = adminCodeInput.value.trim();
+      if (!adminCode) {
+        setMessage(loginMessage, '請輸入管理碼。', true);
+        return;
+      }
+
+      setMessage(loginMessage, '驗證中...');
+
+      try {
+        const data = await postJson({
+          action: 'verifyAdminCode',
+          adminCode
+        });
+
+        if (!data.success) {
+          setMessage(loginMessage, data.message || '驗證失敗。', true);
+          return;
+        }
+
+        verifiedAdminCode = adminCode;
+        sessionStorage.setItem('libraryAdminCode', adminCode);
+        setMessage(loginMessage, '驗證成功。');
+        loginCard.classList.add('hidden');
+        adminPanel.classList.remove('hidden');
+      } catch (err) {
+        setMessage(loginMessage, '系統連線失敗，請稍後再試。', true);
+      }
+    }
+
+    function renderSearchResults(items) {
+      resultsList.innerHTML = '';
+
+      if (!items.length) {
+        resultsCard.classList.remove('hidden');
+        resultsList.innerHTML = '<p class="empty-tip">查無符合資料。</p>';
+        return;
+      }
+
+      items.forEach((item) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'result-item';
+        button.innerHTML = `
+          <strong>${item.name}</strong>
+          <span>${item.className} 班 ${item.seatNo} 號｜學號 ${item.studentId}</span>
+          <span>剩餘點數：${item.points}</span>
+        `;
+        button.addEventListener('click', () => {
+          setStudentView(item);
+          window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        });
+        resultsList.appendChild(button);
+      });
+
+      resultsCard.classList.remove('hidden');
+    }
+
+    async function searchStudents() {
+      const keyword = keywordInput.value.trim();
+      if (!keyword) {
+        setMessage(searchMessage, '請輸入學號或姓名。', true);
+        resultsCard.classList.add('hidden');
+        clearStudentView();
+        return;
+      }
+
+      setMessage(searchMessage, '搜尋中...');
+      resultsCard.classList.add('hidden');
+      clearStudentView();
+
+      try {
+        const data = await postJson({
+          action: 'searchStudents',
+          adminCode: verifiedAdminCode,
+          keyword
+        });
+
+        if (!data.success) {
+          setMessage(searchMessage, data.message || '搜尋失敗。', true);
+          return;
+        }
+
+        setMessage(searchMessage, `搜尋完成，共 ${data.data.length} 筆。`);
+        renderSearchResults(data.data);
+      } catch (err) {
+        setMessage(searchMessage, '系統連線失敗，請稍後再試。', true);
+      }
+    }
+
+    async function deductPoints() {
+      if (!currentStudent) {
+        setMessage(deductMessage, '請先選取學生。', true);
+        return;
+      }
+
+      const points = Number(deductPointsInput.value);
+      const note = noteInput.value.trim();
+      const currentPoints = Number(currentStudent.points) || 0;
+
+      if (!Number.isFinite(points) || points <= 0) {
+        setMessage(deductMessage, '請輸入正確的扣除點數。', true);
+        return;
+      }
+
+      if (points > currentPoints) {
+        setMessage(deductMessage, `點數不足，目前只有 ${currentPoints} 點。`, true);
+        return;
+      }
+
+      const ok = confirm(
+        `確認扣點？\n\n` +
+        `學生：${currentStudent.name}\n` +
+        `學號：${currentStudent.studentId}\n` +
+        `目前點數：${currentPoints}\n` +
+        `扣除點數：${points}\n` +
+        `扣除後剩餘：${currentPoints - points}\n` +
+        `備註：${note || '無'}`
+      );
+
+      if (!ok) return;
+
+      setMessage(deductMessage, '處理中...');
+
+      try {
+        const data = await postJson({
+          action: 'deductPoints',
+          adminCode: verifiedAdminCode,
+          studentId: currentStudent.studentId,
+          points,
+          note
+        });
+
+        if (!data.success) {
+          setMessage(deductMessage, data.message || '扣點失敗。', true);
+          return;
+        }
+
+        currentStudent = {
+          ...currentStudent,
+          points: data.data.newPoints
+        };
+        setStudentView(currentStudent);
+        deductPointsInput.value = '';
+        noteInput.value = '';
+        setMessage(deductMessage, `扣點成功，剩餘點數：${data.data.newPoints}`);
+      } catch (err) {
+        setMessage(deductMessage, '系統連線失敗，請稍後再試。', true);
+      }
+    }
+
+    function tryAutoLogin() {
+      const savedCode = sessionStorage.getItem('libraryAdminCode');
+      if (!savedCode) return;
+      adminCodeInput.value = savedCode;
+      verifyAdminCode();
+    }
+
+    verifyBtn.addEventListener('click', verifyAdminCode);
+    searchBtn.addEventListener('click', searchStudents);
+    deductBtn.addEventListener('click', deductPoints);
+
+    adminCodeInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') verifyAdminCode();
+    });
+
+    keywordInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') searchStudents();
+    });
+
+    tryAutoLogin();
+  </script>
+</body>
+</html>

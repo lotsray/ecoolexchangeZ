@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>學生查詢｜五常國小點數系統</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="container narrow">
+    <header class="page-header">
+      <h1>學生查詢</h1>
+      <p class="subtitle">請輸入學號查詢個人剩餘點數。</p>
+    </header>
+
+    <section class="card">
+      <label for="studentId">學號</label>
+      <input id="studentId" type="text" inputmode="numeric" placeholder="例如：114027" autocomplete="off" />
+      <button id="searchBtn">查詢</button>
+      <p id="message" class="message" aria-live="polite"></p>
+    </section>
+
+    <section id="resultCard" class="card hidden" aria-live="polite">
+      <h2>查詢結果</h2>
+      <div class="result-grid">
+        <div>班級</div><div id="rClass"></div>
+        <div>座號</div><div id="rSeat"></div>
+        <div>學號</div><div id="rStudentId"></div>
+        <div>姓名</div><div id="rName"></div>
+        <div>剩餘點數</div><div id="rPoints" class="points-value"></div>
+      </div>
+    </section>
+
+    <div class="back-area">
+      <a href="index.html">回首頁</a>
+    </div>
+  </main>
+
+  <script>
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbworGSEpAIFNwuszYAOrAcgcCjCUU10jYQtZTL7mQdfcVmiMg3gchdoGnB2WWzPLilY/exec';
+
+    const studentIdInput = document.getElementById('studentId');
+    const searchBtn = document.getElementById('searchBtn');
+    const message = document.getElementById('message');
+    const resultCard = document.getElementById('resultCard');
+
+    function setMessage(text, isError = false) {
+      message.textContent = text;
+      message.className = isError ? 'message error' : 'message';
+    }
+
+    function hideResult() {
+      resultCard.classList.add('hidden');
+    }
+
+    function showResult(data) {
+      document.getElementById('rClass').textContent = data.className ?? '';
+      document.getElementById('rSeat').textContent = data.seatNo ?? '';
+      document.getElementById('rStudentId').textContent = data.studentId ?? '';
+      document.getElementById('rName').textContent = data.name ?? '';
+      document.getElementById('rPoints').textContent = data.points ?? 0;
+      resultCard.classList.remove('hidden');
+    }
+
+    async function getStudent() {
+      const studentId = studentIdInput.value.trim();
+      if (!studentId) {
+        hideResult();
+        setMessage('請先輸入學號。', true);
+        return;
+      }
+
+      setMessage('查詢中...');
+      hideResult();
+
+      try {
+        const res = await fetch(GAS_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'getStudent',
+            studentId
+          })
+        });
+        const data = await res.json();
+
+        if (!data.success) {
+          setMessage(data.message || '查詢失敗。', true);
+          return;
+        }
+
+        setMessage('查詢成功。');
+        showResult(data.data);
+      } catch (err) {
+        setMessage('系統連線失敗，請稍後再試。', true);
+      }
+    }
+
+    searchBtn.addEventListener('click', getStudent);
+    studentIdInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') getStudent();
+    });
+  </script>
+</body>
+</html>
