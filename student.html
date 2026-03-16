@@ -3,33 +3,31 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>學生查詢｜五常國小點數系統</title>
+  <title>學生查詢</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <main class="container narrow">
-    <header class="page-header">
-      <h1>學生查詢</h1>
-      <p class="subtitle">請輸入學號查詢個人剩餘點數。</p>
-    </header>
+  <main class="container">
+    <h1>學生查詢</h1>
+    <p class="subtitle">請輸入學號查詢個人剩餘點數。</p>
 
-    <section class="card">
+    <div class="card">
       <label for="studentId">學號</label>
-      <input id="studentId" type="text" inputmode="numeric" placeholder="例如：114999" autocomplete="off" />
+      <input id="studentId" type="text" placeholder="例如：114027" />
       <button id="searchBtn">查詢</button>
-      <p id="message" class="message" aria-live="polite"></p>
-    </section>
+      <p id="message" class="message"></p>
+    </div>
 
-    <section id="resultCard" class="card hidden" aria-live="polite">
+    <div id="resultCard" class="card hidden">
       <h2>查詢結果</h2>
       <div class="result-grid">
         <div>班級</div><div id="rClass"></div>
         <div>座號</div><div id="rSeat"></div>
         <div>學號</div><div id="rStudentId"></div>
         <div>姓名</div><div id="rName"></div>
-        <div>剩餘點數</div><div id="rPoints" class="points-value"></div>
+        <div>剩餘點數</div><div id="rPoints"></div>
       </div>
-    </section>
+    </div>
 
     <div class="back-area">
       <a href="index.html">回首頁</a>
@@ -64,9 +62,10 @@
 
     async function getStudent() {
       const studentId = studentIdInput.value.trim();
+
       if (!studentId) {
         hideResult();
-        setMessage('請先輸入學號。', true);
+        setMessage('請先輸入學號', true);
         return;
       }
 
@@ -74,25 +73,20 @@
       hideResult();
 
       try {
-        const res = await fetch(GAS_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-            action: 'getStudent',
-            studentId
-          })
-        });
+        const url = `${GAS_URL}?action=getStudent&studentId=${encodeURIComponent(studentId)}`;
+        const res = await fetch(url, { method: 'GET' });
         const data = await res.json();
 
         if (!data.success) {
-          setMessage(data.message || '查詢失敗。', true);
+          setMessage(data.message || '查詢失敗', true);
           return;
         }
 
-        setMessage('查詢成功。');
+        setMessage('查詢成功');
         showResult(data.data);
       } catch (err) {
-        setMessage('系統連線失敗，請稍後再試。', true);
+        console.error(err);
+        setMessage('系統連線失敗，請稍後再試', true);
       }
     }
 
