@@ -32,7 +32,7 @@
       </div>
 
       <div id="studentCard" class="card hidden">
-        <h2>學生資料</h2>
+        <h2>單筆點數調整</h2>
         <div class="result-grid">
           <div>班級</div><div id="rClass"></div>
           <div>座號</div><div id="rSeat"></div>
@@ -58,6 +58,47 @@
         <button id="adjustBtn">確認送出</button>
         <p id="adjustMessage" class="message"></p>
       </div>
+
+      <div class="card batch-card">
+        <h2>批次點數調整</h2>
+
+        <label for="batchStudentIds">學號清單</label>
+        <textarea id="batchStudentIds" rows="8" placeholder="每行一個學號，例如：
+114027
+114029
+114032"></textarea>
+
+        <label for="batchMode">操作類型</label>
+        <select id="batchMode">
+          <option value="add">加點</option>
+          <option value="deduct">扣點</option>
+        </select>
+
+        <label for="batchPoints">點數</label>
+        <input id="batchPoints" type="number" min="1" placeholder="例如：10" />
+
+        <label for="batchNote">備註</label>
+        <input id="batchNote" type="text" placeholder="例如：閱讀活動獎勵 / 批次兌換" />
+
+        <div class="batch-actions">
+          <button id="previewBatchBtn" type="button">預覽名單</button>
+          <button id="batchAdjustBtn" type="button">批次送出</button>
+        </div>
+
+        <p id="batchMessage" class="message"></p>
+
+        <div id="batchPreviewCard" class="batch-result hidden">
+          <h3>批次預覽</h3>
+          <div id="batchPreviewSummary"></div>
+          <div id="batchPreviewList"></div>
+        </div>
+
+        <div id="batchResultCard" class="batch-result hidden">
+          <h3>批次處理結果</h3>
+          <div id="batchResultSummary"></div>
+          <div id="batchResultList"></div>
+        </div>
+      </div>
     </div>
 
     <div class="back-area">
@@ -80,7 +121,6 @@
     const keywordInput = document.getElementById('keyword');
     const searchBtn = document.getElementById('searchBtn');
     const searchMessage = document.getElementById('searchMessage');
-
     const searchResultsCard = document.getElementById('searchResultsCard');
     const searchResults = document.getElementById('searchResults');
 
@@ -91,23 +131,45 @@
     const adjustBtn = document.getElementById('adjustBtn');
     const adjustMessage = document.getElementById('adjustMessage');
 
+    const batchStudentIds = document.getElementById('batchStudentIds');
+    const batchMode = document.getElementById('batchMode');
+    const batchPoints = document.getElementById('batchPoints');
+    const batchNote = document.getElementById('batchNote');
+    const previewBatchBtn = document.getElementById('previewBatchBtn');
+    const batchAdjustBtn = document.getElementById('batchAdjustBtn');
+    const batchMessage = document.getElementById('batchMessage');
+    const batchPreviewCard = document.getElementById('batchPreviewCard');
+    const batchPreviewSummary = document.getElementById('batchPreviewSummary');
+    const batchPreviewList = document.getElementById('batchPreviewList');
+    const batchResultCard = document.getElementById('batchResultCard');
+    const batchResultSummary = document.getElementById('batchResultSummary');
+    const batchResultList = document.getElementById('batchResultList');
+
     function setText(id, value) {
       document.getElementById(id).textContent = value ?? '';
     }
 
-    function setLoginMessage(text, isError = false) {
-      loginMessage.textContent = text;
-      loginMessage.className = isError ? 'message error' : 'message';
+    function setMessage(el, text, isError = false) {
+      el.textContent = text;
+      el.className = isError ? 'message error' : 'message';
     }
 
-    function setSearchMessage(text, isError = false) {
-      searchMessage.textContent = text;
-      searchMessage.className = isError ? 'message error' : 'message';
+    function parseStudentIds(text) {
+      return [...new Set(
+        text
+          .split(/[\n,，、\s]+/)
+          .map(x => x.trim())
+          .filter(Boolean)
+      )];
     }
 
-    function setAdjustMessage(text, isError = false) {
-      adjustMessage.textContent = text;
-      adjustMessage.className = isError ? 'message error' : 'message';
+    async function postToGas(payload) {
+      const res = await fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      });
+      return await res.json();
     }
 
     function clearStudentPanel() {
@@ -115,7 +177,7 @@
       studentCard.classList.add('hidden');
       adjustPointsInput.value = '';
       noteInput.value = '';
-      setAdjustMessage('');
+      setMessage(adjustMessage, '');
     }
 
     function showStudent(data) {
@@ -126,7 +188,7 @@
       setText('rPoints', data.points);
       currentStudent = data;
       studentCard.classList.remove('hidden');
-      setAdjustMessage('');
+      setMessage(adjustMessage, '');
       adjustPointsInput.value = '';
       noteInput.value = '';
     }
@@ -164,36 +226,29 @@
       const adminCode = adminCodeInput.value.trim();
 
       if (!adminCode) {
-        setLoginMessage('請輸入管理碼', true);
+        setMessage(loginMessage, '請輸入管理碼', true);
         return;
       }
 
-      setLoginMessage('驗證中...');
+      setMessage(loginMessage, '驗證中...');
 
       try {
-        const res = await fetch(GAS_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-            action: 'verifyAdminCode',
-            adminCode
-          })
+        const data = await postToGas({
+          action: 'verifyAdminCode',
+          adminCode
         });
 
-        const data = await res.json();
-
         if (!data.success) {
-          setLoginMessage(data.message || '驗證失敗', true);
+          setMessage(loginMessage, data.message || '驗證失敗', true);
           return;
         }
 
         verifiedAdminCode = adminCode;
-        setLoginMessage('驗證成功');
+        setMessage(loginMessage, '驗證成功');
         loginCard.classList.add('hidden');
         adminPanel.classList.remove('hidden');
       } catch (err) {
-        console.error(err);
-        setLoginMessage('系統連線失敗，請稍後再試', true);
+        setMessage(loginMessage, '系統連線失敗，請稍後再試', true);
       }
     }
 
@@ -201,43 +256,36 @@
       const keyword = keywordInput.value.trim();
 
       if (!keyword) {
-        setSearchMessage('請輸入學號或姓名', true);
+        setMessage(searchMessage, '請輸入學號或姓名', true);
         return;
       }
 
-      setSearchMessage('查詢中...');
+      setMessage(searchMessage, '查詢中...');
       searchResultsCard.classList.add('hidden');
       clearStudentPanel();
 
       try {
-        const res = await fetch(GAS_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-            action: 'searchStudents',
-            adminCode: verifiedAdminCode,
-            keyword
-          })
+        const data = await postToGas({
+          action: 'searchStudents',
+          adminCode: verifiedAdminCode,
+          keyword
         });
 
-        const data = await res.json();
-
         if (!data.success) {
-          setSearchMessage(data.message || '查詢失敗', true);
+          setMessage(searchMessage, data.message || '查詢失敗', true);
           return;
         }
 
-        setSearchMessage(`查詢成功，共 ${data.data.length} 筆`);
+        setMessage(searchMessage, `查詢成功，共 ${data.data.length} 筆`);
         renderSearchResults(data.data);
       } catch (err) {
-        console.error(err);
-        setSearchMessage('系統連線失敗，請稍後再試', true);
+        setMessage(searchMessage, '系統連線失敗，請稍後再試', true);
       }
     }
 
     async function adjustPoints() {
       if (!currentStudent) {
-        setAdjustMessage('請先選擇學生', true);
+        setMessage(adjustMessage, '請先選擇學生', true);
         return;
       }
 
@@ -246,17 +294,15 @@
       const note = noteInput.value.trim();
 
       if (!Number.isFinite(points) || points <= 0) {
-        setAdjustMessage('請輸入正確的點數', true);
+        setMessage(adjustMessage, '請輸入正確的點數', true);
         return;
       }
 
       const currentPoints = Number(currentStudent.points) || 0;
-      const newPoints = mode === 'deduct'
-        ? currentPoints - points
-        : currentPoints + points;
+      const newPoints = mode === 'deduct' ? currentPoints - points : currentPoints + points;
 
       if (mode === 'deduct' && newPoints < 0) {
-        setAdjustMessage(`點數不足，目前只有 ${currentPoints} 點`, true);
+        setMessage(adjustMessage, `點數不足，目前只有 ${currentPoints} 點`, true);
         return;
       }
 
@@ -272,51 +318,155 @@
 
       if (!ok) return;
 
-      setAdjustMessage('處理中...');
+      setMessage(adjustMessage, '處理中...');
 
       try {
-        const res = await fetch(GAS_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-            action: 'adjustPoints',
-            adminCode: verifiedAdminCode,
-            studentId: currentStudent.studentId,
-            mode,
-            points,
-            note
-          })
+        const data = await postToGas({
+          action: 'adjustPoints',
+          adminCode: verifiedAdminCode,
+          studentId: currentStudent.studentId,
+          mode,
+          points,
+          note
         });
 
-        const data = await res.json();
-
         if (!data.success) {
-          setAdjustMessage(data.message || `${actionText}失敗`, true);
+          setMessage(adjustMessage, data.message || `${actionText}失敗`, true);
           return;
         }
 
-        const updatedStudent = {
-          ...currentStudent,
-          points: data.data.newPoints
-        };
-
-        showStudent(updatedStudent);
-        setAdjustMessage(`${actionText}成功，剩餘點數：${data.data.newPoints}`);
+        showStudent({ ...currentStudent, points: data.data.newPoints });
+        setMessage(adjustMessage, `${actionText}成功，剩餘點數：${data.data.newPoints}`);
       } catch (err) {
-        console.error(err);
-        setAdjustMessage('系統連線失敗，請稍後再試', true);
+        setMessage(adjustMessage, '系統連線失敗，請稍後再試', true);
+      }
+    }
+
+    function renderBatchList(target, results) {
+      target.innerHTML = '';
+
+      results.forEach(item => {
+        const div = document.createElement('div');
+        div.className = item.success ? 'batch-row success-row' : 'batch-row fail-row';
+
+        if (item.success) {
+          div.textContent = `✓ ${item.studentId}　${item.name}　目前：${item.points ?? item.oldPoints} 點`;
+        } else {
+          div.textContent = `✗ ${item.studentId}　${item.name || ''}　${item.message}`;
+        }
+
+        target.appendChild(div);
+      });
+    }
+
+    async function previewBatchStudents() {
+      const ids = parseStudentIds(batchStudentIds.value);
+
+      if (ids.length === 0) {
+        setMessage(batchMessage, '請先貼上學號清單', true);
+        return;
+      }
+
+      setMessage(batchMessage, '預覽名單中...');
+      batchPreviewCard.classList.add('hidden');
+      batchResultCard.classList.add('hidden');
+
+      try {
+        const data = await postToGas({
+          action: 'previewBatchStudents',
+          adminCode: verifiedAdminCode,
+          studentIds: ids
+        });
+
+        if (!data.success) {
+          setMessage(batchMessage, data.message || '預覽失敗', true);
+          return;
+        }
+
+        const info = data.data;
+        setMessage(batchMessage, '預覽完成');
+
+        batchPreviewSummary.innerHTML = `
+          <p>總筆數：${info.total}　找到：${info.found}　查無：${info.notFound}</p>
+        `;
+
+        renderBatchList(batchPreviewList, info.results);
+        batchPreviewCard.classList.remove('hidden');
+      } catch (err) {
+        setMessage(batchMessage, '系統連線失敗，請稍後再試', true);
+      }
+    }
+
+    async function batchAdjustPoints() {
+      const ids = parseStudentIds(batchStudentIds.value);
+      const mode = batchMode.value;
+      const points = Number(batchPoints.value);
+      const note = batchNote.value.trim();
+
+      if (ids.length === 0) {
+        setMessage(batchMessage, '請先貼上學號清單', true);
+        return;
+      }
+
+      if (!Number.isFinite(points) || points <= 0) {
+        setMessage(batchMessage, '請輸入正確的點數', true);
+        return;
+      }
+
+      const actionText = mode === 'deduct' ? '扣點' : '加點';
+
+      const ok = confirm(
+        `確認批次${actionText}？\n\n` +
+        `人數：${ids.length}\n` +
+        `${actionText}點數：${points}\n` +
+        `備註：${note || '無'}`
+      );
+
+      if (!ok) return;
+
+      setMessage(batchMessage, '批次處理中...');
+      batchResultCard.classList.add('hidden');
+
+      try {
+        const data = await postToGas({
+          action: 'batchAdjustPoints',
+          adminCode: verifiedAdminCode,
+          studentIds: ids,
+          mode,
+          points,
+          note
+        });
+
+        if (!data.success) {
+          setMessage(batchMessage, data.message || '批次處理失敗', true);
+          return;
+        }
+
+        const info = data.data;
+        setMessage(batchMessage, '批次處理完成');
+
+        batchResultSummary.innerHTML = `
+          <p>總筆數：${info.total}　成功：${info.successCount}　失敗：${info.failCount}</p>
+        `;
+
+        renderBatchList(batchResultList, info.results);
+        batchResultCard.classList.remove('hidden');
+      } catch (err) {
+        setMessage(batchMessage, '系統連線失敗，請稍後再試', true);
       }
     }
 
     verifyBtn.addEventListener('click', verifyAdminCode);
     searchBtn.addEventListener('click', searchStudent);
     adjustBtn.addEventListener('click', adjustPoints);
+    previewBatchBtn.addEventListener('click', previewBatchStudents);
+    batchAdjustBtn.addEventListener('click', batchAdjustPoints);
 
-    adminCodeInput.addEventListener('keydown', (e) => {
+    adminCodeInput.addEventListener('keydown', e => {
       if (e.key === 'Enter') verifyAdminCode();
     });
 
-    keywordInput.addEventListener('keydown', (e) => {
+    keywordInput.addEventListener('keydown', e => {
       if (e.key === 'Enter') searchStudent();
     });
   </script>
