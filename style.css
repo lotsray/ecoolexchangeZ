@@ -22,35 +22,16 @@ body {
   padding: 32px 24px 64px;
 }
 
-/* ===== 首頁專用 ===== */
 .home-container {
   max-width: 760px;
-  margin: 0 auto;
-  padding-top: 56px;
+  padding-top: 64px;
 }
 
-.home-title {
-  text-align: center;
-  margin-bottom: 18px;
-}
-
-.home-subtitle {
+.home-hero {
   text-align: center;
   margin-bottom: 32px;
 }
 
-.home-card {
-  max-width: 640px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.admin-link {
-  display: inline-block;
-  margin-top: 20px;
-}
-
-/* ===== 通用文字 ===== */
 h1 {
   margin: 0 0 14px;
   font-size: 3rem;
@@ -60,10 +41,21 @@ h1 {
   letter-spacing: 0.5px;
 }
 
+.home-title {
+  font-size: 3.2rem;
+  text-align: center;
+}
+
 h2 {
   margin: 0 0 16px;
   font-size: 1.35rem;
   font-weight: 700;
+  color: #17345f;
+}
+
+h3 {
+  margin: 0 0 12px;
+  font-size: 1.15rem;
   color: #17345f;
 }
 
@@ -74,7 +66,11 @@ h2 {
   color: #475569;
 }
 
-/* ===== 卡片 ===== */
+.home-subtitle {
+  text-align: center;
+  margin-bottom: 0;
+}
+
 .card {
   background: #ffffff;
   border: 1px solid #d7e0ea;
@@ -85,10 +81,15 @@ h2 {
 }
 
 .menu-card {
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.home-card {
   text-align: center;
 }
 
-/* ===== 表單 ===== */
 label {
   display: block;
   margin-bottom: 10px;
@@ -98,7 +99,8 @@ label {
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   padding: 16px 18px;
   margin-bottom: 16px;
@@ -110,15 +112,22 @@ select {
   line-height: 1.4;
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+}
+
+textarea {
+  resize: vertical;
+  line-height: 1.6;
+  min-height: 160px;
 }
 
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   border-color: #2f67de;
   box-shadow: 0 0 0 4px rgba(47, 103, 222, 0.12);
 }
 
-/* ===== 按鈕 ===== */
 button,
 .big-button {
   display: inline-block;
@@ -148,9 +157,10 @@ button:active,
 
 .small-link {
   display: inline-block;
-  margin-top: 18px;
+  margin-top: 20px;
   color: #2563eb;
-  font-size: 1rem;
+  font-size: 1.05rem;
+  font-weight: 600;
   text-decoration: none;
 }
 
@@ -158,7 +168,10 @@ button:active,
   text-decoration: underline;
 }
 
-/* ===== 訊息 ===== */
+.admin-link {
+  margin-top: 20px;
+}
+
 .message {
   min-height: 1.6em;
   margin-top: 8px;
@@ -175,7 +188,6 @@ button:active,
   display: none;
 }
 
-/* ===== 查詢結果區 ===== */
 .result-grid {
   display: grid;
   grid-template-columns: 140px 1fr;
@@ -188,7 +200,6 @@ button:active,
   color: #334155;
 }
 
-/* ===== 返回連結 ===== */
 .back-area {
   text-align: center;
   margin-top: 28px;
@@ -211,7 +222,6 @@ hr {
   margin: 24px 0;
 }
 
-/* ===== 搜尋結果列表 ===== */
 #searchResults {
   display: flex;
   flex-direction: column;
@@ -266,21 +276,55 @@ hr {
 
 #verifyBtn,
 #searchBtn,
-#adjustBtn {
+#adjustBtn,
+#previewBatchBtn,
+#batchAdjustBtn {
   margin-top: 4px;
 }
 
-/* ===== 平板 ===== */
+.batch-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.batch-result {
+  margin-top: 20px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 18px;
+}
+
+.batch-row {
+  padding: 10px 12px;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.success-row {
+  background: #ecfdf5;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.fail-row {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
 @media (max-width: 900px) {
   .container {
     padding: 24px 18px 44px;
   }
 
   .home-container {
-    padding-top: 36px;
+    padding-top: 48px;
   }
 
-  h1 {
+  h1,
+  .home-title {
     font-size: 2.4rem;
   }
 
@@ -303,7 +347,8 @@ hr {
   }
 
   input,
-  select {
+  select,
+  textarea {
     font-size: 1rem;
     padding: 14px 15px;
     border-radius: 14px;
@@ -326,17 +371,23 @@ hr {
   }
 }
 
-/* ===== 手機 ===== */
+@media (max-width: 640px) {
+  .batch-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 520px) {
   .container {
     padding: 20px 14px 36px;
   }
 
   .home-container {
-    padding-top: 28px;
+    padding-top: 40px;
   }
 
-  h1 {
+  h1,
+  .home-title {
     font-size: 1.95rem;
   }
 
@@ -346,7 +397,6 @@ hr {
 
   .card {
     padding: 18px 16px;
-    border-radius: 16px;
   }
 
   .result-grid {
@@ -364,10 +414,5 @@ hr {
 
   .result-item-side {
     font-size: 0.94rem;
-  }
-
-  .admin-link,
-  .small-link {
-    margin-top: 16px;
   }
 }
